@@ -19,156 +19,141 @@ const macrotasks = [
 ]
 
 const comparisonRows = [
-  { id: 12, label: 'Execution Rule', micro: 'DRAIN ALL to 0 (Complete exhaustion)', macro: 'Exactly ONE task per turn', highlight: true },
-  { id: 13, label: 'Spec Authority', micro: 'ECMAScript Language Spec (Jobs)', macro: 'HTML5 / WHATWG Event Loop Spec', highlight: false },
-  { id: 14, label: 'Yield to Render?', micro: 'NEVER yields until empty (blocks UI)', macro: 'YES, yields every turn for 60fps', highlight: true },
-  { id: 15, label: 'Self-recursion', micro: 'Freezes tab! (Microtask starvation)', macro: 'Safe! Browser paints between calls', highlight: true },
+  { id: 12, label: 'Execution Rule', micro: 'DRAIN ALL to 0 (Complete exhaustion)', macro: 'Exactly ONE task per turn' },
+  { id: 13, label: 'Yield to Render?', micro: 'NEVER yields until 100% empty (blocks UI)', macro: 'YES, yields every turn for 60fps' },
+  { id: 14, label: 'Infinite Recursion', micro: 'Freezes tab! (Microtask starvation)', macro: 'Safe! Browser renders between turns' },
 ]
 </script>
 
 <template>
-  <div class="h-full flex flex-col gap-2 select-none text-slate-800">
+  <div class="h-full flex flex-col justify-between select-none text-slate-800 text-xs">
     <!-- Header -->
-    <div class="flex items-center gap-3 pb-1 border-b-2 border-slate-200">
-      <span class="text-2xl">⚖️</span>
+    <div class="flex items-center gap-2 pb-1 border-b border-slate-200 shrink-0">
+      <span class="text-xl">⚖️</span>
       <div>
-        <h2 class="text-xl font-black text-slate-900 leading-tight">Microtasks vs Macrotasks</h2>
-        <p class="text-xs text-slate-500">Chapter 5 of 6 · Architectural Mechanics</p>
+        <h2 class="text-base font-black text-slate-900 leading-tight">Microtasks vs Macrotasks: Priority Architecture</h2>
+        <p class="text-[10px] text-slate-500">Chapter 5 of 6 · Two-Tier Concurrency & Starvation Hazards</p>
       </div>
-      <div class="ml-auto px-2 py-1 rounded-lg bg-sky-600 text-white text-xs font-bold">Step {{ s }}/22</div>
+      <div class="ml-auto flex items-center gap-1.5">
+        <span class="px-2 py-0.5 rounded bg-violet-100 text-violet-900 text-[10px] font-bold">Two-Tier Queue System</span>
+        <div class="px-2 py-0.5 rounded bg-sky-600 text-white text-[10px] font-bold">Step {{ s }}/22</div>
+      </div>
     </div>
 
-    <!-- Subtitle banner -->
-    <div class="bg-slate-50 border border-slate-200 rounded-lg px-3 py-1 text-xs text-slate-700 flex items-center justify-between">
-      <span class="font-medium">
-        <strong class="text-violet-700">Microtasks (VIP Jobs)</strong> run immediately after current synchronous frame, while
-        <strong class="text-amber-700">Macrotasks (Tasks)</strong> wait for their turn one-by-one.
-      </span>
-      <span class="text-[10px] text-slate-500 font-mono">HTML5 § 8.1.6</span>
-    </div>
-
-    <!-- Main Grid -->
-    <div class="grid grid-cols-2 gap-3 flex-1 min-h-0">
-      <!-- LEFT: Two Queues Breakdown -->
-      <div class="flex flex-col gap-2">
+    <!-- 2 Columns -->
+    <div class="grid grid-cols-2 gap-2 flex-1 min-h-0 py-1">
+      <!-- LEFT: Two Queues Breakdown (Steps 1-10) -->
+      <div class="flex flex-col gap-1.5 justify-between min-h-0">
         <!-- Microtask Box -->
         <div
-          class="border-2 rounded-xl p-2.5 bg-violet-50/60 border-violet-300 transition-all duration-300 flex flex-col gap-1.5"
-          :class="s >= 1 ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-2'"
+          class="border-2 rounded-lg p-2 bg-violet-50/50 border-violet-300 flex flex-col gap-1 transition-all duration-300"
+          :class="s >= 1 ? 'opacity-100' : 'opacity-25'"
         >
-          <div class="flex items-center justify-between">
-            <span class="text-xs font-black text-violet-900 flex items-center gap-1.5">
-              <span>👑</span> Microtasks Queue (VIP Priority)
+          <div class="flex items-center justify-between text-[10px]">
+            <span class="font-black text-violet-900 flex items-center gap-1">
+              <span>👑</span> Microtasks (VIP Priority Queue)
             </span>
-            <span class="bg-violet-600 text-white font-bold text-[9px] px-2 py-0.5 rounded-full">Drain 100%</span>
+            <span class="bg-violet-600 text-white font-bold text-[8px] px-1.5 py-0.2 rounded">Drain 100%</span>
           </div>
 
-          <div class="grid grid-cols-1 gap-1">
+          <div class="grid grid-cols-1 gap-0.5">
             <div
               v-for="item in microtasks" :key="item.id"
-              class="rounded-lg p-1.5 border text-xs font-medium flex items-center justify-between transition-all duration-300"
-              :class="[
-                s >= item.id ? 'opacity-100 scale-100 bg-white border-violet-200 shadow-sm' : 'opacity-0 scale-95 bg-white/40 border-transparent',
-              ]"
+              class="rounded p-1 border text-[9px] flex items-center justify-between transition-all duration-200"
+              :class="s >= item.id ? 'opacity-100 bg-white border-violet-200 shadow-xs' : 'opacity-20 border-transparent'"
             >
-              <div class="flex items-center gap-1.5 truncate">
+              <div class="flex items-center gap-1 truncate">
                 <span>{{ item.icon }}</span>
-                <span class="font-bold text-violet-950 font-mono text-[11px]">{{ item.name }}</span>
+                <span class="font-bold text-violet-950 font-mono text-[9px]">{{ item.name }}</span>
               </div>
-              <span class="text-[9px] text-violet-600 shrink-0 bg-violet-100 px-1 rounded font-semibold">{{ item.spec }}</span>
+              <span class="text-[8px] text-violet-700 bg-violet-100 px-1 rounded font-semibold">{{ item.spec }}</span>
             </div>
           </div>
         </div>
 
         <!-- Macrotask Box -->
         <div
-          class="border-2 rounded-xl p-2.5 bg-amber-50/60 border-amber-300 transition-all duration-300 flex flex-col gap-1.5"
-          :class="s >= 6 ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-2'"
+          class="border-2 rounded-lg p-2 bg-amber-50/50 border-amber-300 flex flex-col gap-1 transition-all duration-300"
+          :class="s >= 6 ? 'opacity-100' : 'opacity-25'"
         >
-          <div class="flex items-center justify-between">
-            <span class="text-xs font-black text-amber-900 flex items-center gap-1.5">
-              <span>⏱️</span> Macrotasks Queue (Standard Tasks)
+          <div class="flex items-center justify-between text-[10px]">
+            <span class="font-black text-amber-900 flex items-center gap-1">
+              <span>⏱️</span> Macrotasks (Standard Task Queue)
             </span>
-            <span class="bg-amber-600 text-white font-bold text-[9px] px-2 py-0.5 rounded-full">1 Per Turn</span>
+            <span class="bg-amber-600 text-white font-bold text-[8px] px-1.5 py-0.2 rounded">1 Per Turn</span>
           </div>
 
-          <div class="grid grid-cols-1 gap-1">
+          <div class="grid grid-cols-1 gap-0.5">
             <div
               v-for="item in macrotasks" :key="item.id"
-              class="rounded-lg p-1.5 border text-xs font-medium flex items-center justify-between transition-all duration-300"
-              :class="[
-                s >= item.id ? 'opacity-100 scale-100 bg-white border-amber-200 shadow-sm' : 'opacity-0 scale-95 bg-white/40 border-transparent',
-              ]"
+              class="rounded p-1 border text-[9px] flex items-center justify-between transition-all duration-200"
+              :class="s >= item.id ? 'opacity-100 bg-white border-amber-200 shadow-xs' : 'opacity-20 border-transparent'"
             >
-              <div class="flex items-center gap-1.5 truncate">
+              <div class="flex items-center gap-1 truncate">
                 <span>{{ item.icon }}</span>
-                <span class="font-bold text-amber-950 font-mono text-[11px]">{{ item.name }}</span>
+                <span class="font-bold text-amber-950 font-mono text-[9px]">{{ item.name }}</span>
               </div>
-              <span class="text-[9px] text-amber-700 shrink-0 bg-amber-100 px-1 rounded font-semibold">{{ item.spec }}</span>
+              <span class="text-[8px] text-amber-800 bg-amber-100 px-1 rounded font-semibold">{{ item.spec }}</span>
             </div>
           </div>
         </div>
       </div>
 
-      <!-- RIGHT: The Rules & Starvation Code -->
-      <div class="flex flex-col gap-2">
-        <!-- Comparison Table -->
+      <!-- RIGHT: The Concurrency Rules & Starvation Code (Steps 11-22) -->
+      <div class="flex flex-col gap-1.5 justify-between min-h-0">
+        <!-- Concurrency Table (Steps 11-14) -->
         <div
-          class="border-2 border-slate-200 rounded-xl p-2.5 bg-white flex flex-col transition-all duration-300"
-          :class="s >= 11 ? 'opacity-100' : 'opacity-0'"
+          class="border border-slate-200 rounded-lg p-2 bg-white flex flex-col gap-1 transition-all duration-300"
+          :class="s >= 11 ? 'opacity-100' : 'opacity-25'"
         >
-          <div class="text-[11px] font-black text-slate-700 uppercase tracking-wider mb-1.5">
-            📊 The Concurrency Contract
+          <div class="text-[10px] font-black text-slate-700 uppercase tracking-wider flex justify-between">
+            <span>📊 Concurrency Rules Comparison</span>
+            <span class="text-[8px] text-slate-400 font-mono">Steps 11-14</span>
           </div>
 
-          <div class="flex flex-col gap-1">
+          <div class="flex flex-col gap-0.5">
             <div
               v-for="row in comparisonRows" :key="row.id"
-              class="border rounded-lg p-1.5 text-[11px] flex flex-col transition-all duration-300"
-              :class="[
-                s >= row.id ? 'opacity-100 translate-x-0' : 'opacity-0 translate-x-2',
-                row.highlight ? 'bg-slate-50 border-slate-300' : 'bg-white border-slate-100'
-              ]"
+              class="border rounded p-1 text-[9px] flex flex-col transition-all duration-200"
+              :class="s >= row.id ? 'bg-slate-50 border-slate-300' : 'border-transparent text-slate-300'"
             >
-              <div class="font-black text-slate-800 text-[10px] mb-0.5">{{ row.label }}</div>
-              <div class="grid grid-cols-2 gap-2 text-[10px]">
-                <div class="text-violet-900 bg-violet-50 p-1 rounded border border-violet-200">
-                  <span class="font-bold">Micro:</span> {{ row.micro }}
+              <div class="font-bold text-slate-800 text-[8px]">{{ row.label }}</div>
+              <div class="grid grid-cols-2 gap-1 text-[8px] mt-0.5">
+                <div class="text-violet-900 bg-violet-50 px-1 py-0.5 rounded border border-violet-200 truncate">
+                  <strong>Micro:</strong> {{ row.micro }}
                 </div>
-                <div class="text-amber-900 bg-amber-50 p-1 rounded border border-amber-200">
-                  <span class="font-bold">Macro:</span> {{ row.macro }}
+                <div class="text-amber-900 bg-amber-50 px-1 py-0.5 rounded border border-amber-200 truncate">
+                  <strong>Macro:</strong> {{ row.macro }}
                 </div>
               </div>
             </div>
           </div>
         </div>
 
-        <!-- Danger Zone: Starvation Example -->
+        <!-- Danger Zone: Starvation Example (Steps 15-22) -->
         <div
-          class="border-2 border-rose-300 rounded-xl p-2.5 bg-rose-50/70 transition-all duration-300 flex-1 flex flex-col justify-between"
-          :class="s >= 16 ? 'opacity-100 scale-100' : 'opacity-0 scale-95'"
+          class="border border-rose-300 rounded-lg p-2 bg-rose-50/60 flex flex-col justify-between transition-all duration-300 shrink-0"
+          :class="s >= 15 ? 'opacity-100' : 'opacity-25'"
         >
           <div>
-            <div class="text-[11px] font-black text-rose-900 flex items-center justify-between mb-1">
-              <span class="flex items-center gap-1">⚠️ Danger: Microtask Starvation</span>
-              <span class="bg-rose-200 text-rose-900 text-[9px] px-1.5 py-0.2 rounded font-mono font-bold">UI Freeze</span>
+            <div class="text-[10px] font-black text-rose-900 flex items-center justify-between mb-0.5">
+              <span>⚠️ Danger: Microtask Starvation</span>
+              <span class="bg-rose-200 text-rose-900 text-[8px] px-1 rounded font-mono font-bold">UI Freeze</span>
             </div>
-            <div class="text-[10px] text-rose-800 leading-snug mb-1.5">
-              Because microtasks drain to exhaustion, a self-scheduling microtask will <strong class="underline">NEVER</strong> let the event loop render or handle clicks!
+            <div class="text-[9px] text-rose-800 leading-snug mb-1">
+              Because microtasks drain to 0, recursive microtasks permanently block rendering and user clicks!
             </div>
 
             <!-- Code snippet -->
-            <div class="bg-slate-900 rounded-lg p-2 font-mono text-[10px] text-slate-200">
+            <div class="bg-slate-900 rounded p-1.5 font-mono text-[9px] text-slate-200 leading-tight">
               <div class="text-rose-400">// This will PERMANENTLY freeze the browser tab:</div>
-              <div>function starve() {</div>
-              <div class="pl-3 text-amber-300">queueMicrotask(starve); // infinitely queues</div>
-              <div>}</div>
+              <div>function starve() { queueMicrotask(starve); }</div>
               <div>starve(); <span class="text-slate-500">// Stack empties, but microtasks NEVER empty!</span></div>
             </div>
           </div>
 
-          <div class="mt-1 text-[10px] text-slate-700 bg-white/80 p-1.5 rounded border border-rose-200">
-            <strong>Rule of Thumb:</strong> Use microtasks for immediate state updates & Promise chaining; use macrotasks (<code class="bg-slate-100 px-1">setTimeout(fn, 0)</code>) when you need to <strong>yield to the browser UI</strong>!
+          <div class="text-[8px] text-slate-700 bg-white/90 p-1 rounded border border-rose-200 mt-1">
+            <strong>Rule:</strong> Use microtasks for Promise reactions; use <code class="bg-slate-100 px-1 font-bold">setTimeout(fn, 0)</code> when you must <strong>yield to UI render</strong>!
           </div>
         </div>
       </div>

@@ -1,219 +1,278 @@
 <script setup lang="ts">
 import { computed } from 'vue'
+
 const props = defineProps<{ step?: number }>()
 const s = computed(() => Math.min(Math.max(props.step ?? 0, 0), 22))
 
-// The full program being traced:
-// console.log('1. Start')
-// setTimeout(() => console.log('4. Timeout'), 10)
-// Promise.resolve().then(() => console.log('3. Promise'))
-// queueMicrotask(() => console.log('3b. qMT'))
-// console.log('2. End')
-
 interface ELState {
+  codeLine: number
   stack: string[]
   webapi: string[]
   microtasks: string[]
   macrotasks: string[]
   output: string[]
   renderActive: boolean
-  activeZone: 'stack' | 'webapi' | 'micro' | 'macro' | 'render' | 'idle'
+  activeZone: 'code' | 'stack' | 'webapi' | 'micro' | 'macro' | 'render' | 'idle'
   note: string
   angle: number
 }
 
 const states: ELState[] = [
   // 0 initial
-  { stack: [], webapi: [], microtasks: [], macrotasks: [], output: [], renderActive: false, activeZone: 'idle', note: '▶ Program starts. All queues empty.', angle: 0 },
+  { codeLine: 0, stack: [], webapi: [], microtasks: [], macrotasks: [], output: [], renderActive: false, activeZone: 'idle', note: '▶ Program loaded. Ready to trace the complete Event Loop lifecycle.', angle: 0 },
   // 1 global starts
-  { stack: ['main()'], webapi: [], microtasks: [], macrotasks: [], output: [], renderActive: false, activeZone: 'stack', note: 'Global script → main() pushed to Call Stack.', angle: 10 },
+  { codeLine: 1, stack: ['main()'], webapi: [], microtasks: [], macrotasks: [], output: [], renderActive: false, activeZone: 'stack', note: 'Global script enters Call Stack as main().', angle: 15 },
   // 2 log start
-  { stack: ['main()', "log('1. Start')"], webapi: [], microtasks: [], macrotasks: [], output: [], renderActive: false, activeZone: 'stack', note: "console.log('1. Start') pushed — runs synchronously.", angle: 20 },
+  { codeLine: 1, stack: ['main()', "log('1. Start')"], webapi: [], microtasks: [], macrotasks: [], output: [], renderActive: false, activeZone: 'stack', note: "Line 1: console.log('1. Start') executes synchronously.", angle: 30 },
   // 3 log start pops, output
-  { stack: ['main()'], webapi: [], microtasks: [], macrotasks: [], output: ['1. Start'], renderActive: false, activeZone: 'stack', note: "✓ '1. Start' printed. console.log popped.", angle: 40 },
+  { codeLine: 1, stack: ['main()'], webapi: [], microtasks: [], macrotasks: [], output: ['1. Start'], renderActive: false, activeZone: 'stack', note: "✓ '1. Start' logged. Stack frame popped.", angle: 45 },
   // 4 setTimeout
-  { stack: ['main()', 'setTimeout(cb, 10)'], webapi: [], microtasks: [], macrotasks: [], output: ['1. Start'], renderActive: false, activeZone: 'stack', note: 'setTimeout(cb, 10) called. V8 hands timer to Web APIs.', angle: 55 },
+  { codeLine: 2, stack: ['main()', 'setTimeout(cb, 10)'], webapi: [], microtasks: [], macrotasks: [], output: ['1. Start'], renderActive: false, activeZone: 'stack', note: 'Line 2: setTimeout(cb, 10ms) hands timer off to Web APIs.', angle: 60 },
   // 5 setTimeout hands off
-  { stack: ['main()'], webapi: ['⏱ Timer(cb) 10ms'], microtasks: [], macrotasks: [], output: ['1. Start'], renderActive: false, activeZone: 'webapi', note: 'Timer handed to Browser C++ thread. Stack does NOT wait!', angle: 80 },
+  { codeLine: 2, stack: ['main()'], webapi: ['⏱ Timer(cb) 10ms'], microtasks: [], macrotasks: [], output: ['1. Start'], renderActive: false, activeZone: 'webapi', note: 'Timer runs on Host C++ OS thread. Main thread does NOT wait!', angle: 75 },
   // 6 Promise.resolve().then
-  { stack: ['main()', 'Promise.resolve().then(p1)'], webapi: ['⏱ Timer(cb) 8ms'], microtasks: [], macrotasks: [], output: ['1. Start'], renderActive: false, activeZone: 'stack', note: 'Promise.resolve() → already settled → schedules p1 as microtask.', angle: 100 },
+  { codeLine: 3, stack: ['main()', 'Promise.resolve().then(p1)'], webapi: ['⏱ Timer(cb) 8ms'], microtasks: [], macrotasks: [], output: ['1. Start'], renderActive: false, activeZone: 'stack', note: 'Line 3: Promise fulfills immediately; registers p1 callback.', angle: 90 },
   // 7 p1 enters microtask queue
-  { stack: ['main()'], webapi: ['⏱ Timer(cb) 6ms'], microtasks: ['p1: log(Promise)'], macrotasks: [], output: ['1. Start'], renderActive: false, activeZone: 'micro', note: '⭐ p1 enters Microtask VIP Queue. Promise callbacks always go here!', angle: 120 },
+  { codeLine: 3, stack: ['main()'], webapi: ['⏱ Timer(cb) 6ms'], microtasks: ['p1: log(Promise)'], macrotasks: [], output: ['1. Start'], renderActive: false, activeZone: 'micro', note: '⭐ p1 enters VIP Microtask Queue! Promise reactions go here.', angle: 110 },
   // 8 queueMicrotask
-  { stack: ['main()', 'queueMicrotask(m2)'], webapi: ['⏱ Timer(cb) 4ms'], microtasks: ['p1: log(Promise)', 'm2: log(qMT)'], macrotasks: [], output: ['1. Start'], renderActive: false, activeZone: 'micro', note: 'queueMicrotask(m2) → m2 appended to microtask queue.', angle: 140 },
+  { codeLine: 4, stack: ['main()', 'queueMicrotask(m2)'], webapi: ['⏱ Timer(cb) 4ms'], microtasks: ['p1: log(Promise)', 'm2: log(qMT)'], macrotasks: [], output: ['1. Start'], renderActive: false, activeZone: 'micro', note: 'Line 4: queueMicrotask(m2) adds m2 to the VIP Microtask Queue.', angle: 130 },
   // 9 log end
-  { stack: ['main()', "log('2. End')"], webapi: ['⏱ Timer(cb) 2ms'], microtasks: ['p1: log(Promise)', 'm2: log(qMT)'], macrotasks: [], output: ['1. Start'], renderActive: false, activeZone: 'stack', note: "console.log('2. End') pushed. Last synchronous call.", angle: 155 },
+  { codeLine: 5, stack: ['main()', "log('2. End')"], webapi: ['⏱ Timer(cb) 2ms'], microtasks: ['p1: log(Promise)', 'm2: log(qMT)'], macrotasks: [], output: ['1. Start'], renderActive: false, activeZone: 'stack', note: "Line 5: console.log('2. End') executes synchronously.", angle: 150 },
   // 10 log end outputs
-  { stack: ['main()'], webapi: ['⏱ Timer(cb) 1ms'], microtasks: ['p1: log(Promise)', 'm2: log(qMT)'], macrotasks: [], output: ['1. Start', '2. End'], renderActive: false, activeZone: 'stack', note: "'2. End' printed. Synchronous code almost done.", angle: 170 },
+  { codeLine: 5, stack: ['main()'], webapi: ['⏱ Timer(cb) 1ms'], microtasks: ['p1: log(Promise)', 'm2: log(qMT)'], macrotasks: [], output: ['1. Start', '2. End'], renderActive: false, activeZone: 'stack', note: "✓ '2. End' logged. End of synchronous statements.", angle: 165 },
   // 11 main pops — CRITICAL
-  { stack: [], webapi: ['⏱ Timer(cb) 0ms → FIRED'], microtasks: ['p1: log(Promise)', 'm2: log(qMT)'], macrotasks: ['cb: log(Timeout)'], output: ['1. Start', '2. End'], renderActive: false, activeZone: 'idle', note: '🔑 Stack is EMPTY! Timer fired → cb enters Macrotask queue. Event Loop wakes!', angle: 180 },
+  { codeLine: 0, stack: [], webapi: ['⏱ Timer(cb) fired!'], microtasks: ['p1: log(Promise)', 'm2: log(qMT)'], macrotasks: ['cb: log(Timeout)'], output: ['1. Start', '2. End'], renderActive: false, activeZone: 'idle', note: '🔑 Call Stack is EMPTY! Timer fired → cb entered Macrotask Queue.', angle: 180 },
   // 12 EL checks microtasks
-  { stack: [], webapi: [], microtasks: ['p1: log(Promise)', 'm2: log(qMT)'], macrotasks: ['cb: log(Timeout)'], output: ['1. Start', '2. End'], renderActive: false, activeZone: 'micro', note: '⭐ PHASE 1: Event Loop drains ALL microtasks before anything else!', angle: 200 },
+  { codeLine: 0, stack: [], webapi: [], microtasks: ['p1: log(Promise)', 'm2: log(qMT)'], macrotasks: ['cb: log(Timeout)'], output: ['1. Start', '2. End'], renderActive: false, activeZone: 'micro', note: '⭐ PHASE 1: Event Loop drains ALL Microtasks before anything else!', angle: 200 },
   // 13 run p1
-  { stack: ["p1: log('Promise')"], webapi: [], microtasks: ['m2: log(qMT)'], macrotasks: ['cb: log(Timeout)'], output: ['1. Start', '2. End'], renderActive: false, activeZone: 'micro', note: 'Dequeue p1 → pushed to stack → executes console.log(Promise).', angle: 215 },
+  { codeLine: 3, stack: ["p1: log('Promise')"], webapi: [], microtasks: ['m2: log(qMT)'], macrotasks: ['cb: log(Timeout)'], output: ['1. Start', '2. End'], renderActive: false, activeZone: 'stack', note: 'Dequeue p1 → pushes to Call Stack → runs console.log.', angle: 220 },
   // 14 p1 output
-  { stack: [], webapi: [], microtasks: ['m2: log(qMT)'], macrotasks: ['cb: log(Timeout)'], output: ['1. Start', '2. End', '3. Promise'], renderActive: false, activeZone: 'micro', note: "'3. Promise' logged. p1 frame popped. More microtasks remain!", angle: 230 },
+  { codeLine: 3, stack: [], webapi: [], microtasks: ['m2: log(qMT)'], macrotasks: ['cb: log(Timeout)'], output: ['1. Start', '2. End', '3. Promise'], renderActive: false, activeZone: 'micro', note: "✓ '3. Promise' printed. Stack popped. Microtasks still remain!", angle: 240 },
   // 15 run m2
-  { stack: ["m2: log('qMT')"], webapi: [], microtasks: [], macrotasks: ['cb: log(Timeout)'], output: ['1. Start', '2. End', '3. Promise'], renderActive: false, activeZone: 'micro', note: 'Dequeue m2 → executes. Microtask queue draining...', angle: 245 },
+  { codeLine: 4, stack: ["m2: log('qMT')"], webapi: [], microtasks: [], macrotasks: ['cb: log(Timeout)'], output: ['1. Start', '2. End', '3. Promise'], renderActive: false, activeZone: 'stack', note: 'Dequeue m2 → pushed to Call Stack → executes.', angle: 260 },
   // 16 m2 output
-  { stack: [], webapi: [], microtasks: [], macrotasks: ['cb: log(Timeout)'], output: ['1. Start', '2. End', '3. Promise', '3b. qMT'], renderActive: false, activeZone: 'micro', note: "'3b. qMT' logged. Microtask queue is 100% DRAINED!", angle: 260 },
+  { codeLine: 4, stack: [], webapi: [], microtasks: [], macrotasks: ['cb: log(Timeout)'], output: ['1. Start', '2. End', '3. Promise', '3b. qMT'], renderActive: false, activeZone: 'micro', note: "✓ '3b. qMT' printed. VIP Microtask queue is now 100% DRAINED!", angle: 280 },
   // 17 render check
-  { stack: [], webapi: [], microtasks: [], macrotasks: ['cb: log(Timeout)'], output: ['1. Start', '2. End', '3. Promise', '3b. qMT'], renderActive: true, activeZone: 'render', note: '🎨 PHASE 2: Render opportunity check. V-Sync pulse? → rAF → Style → Layout → Paint.', angle: 290 },
+  { codeLine: 0, stack: [], webapi: [], microtasks: [], macrotasks: ['cb: log(Timeout)'], output: ['1. Start', '2. End', '3. Promise', '3b. qMT'], renderActive: true, activeZone: 'render', note: '🎨 PHASE 2: Render Opportunity! V-Sync pulse → Style, Layout, Paint.', angle: 300 },
   // 18 render done
-  { stack: [], webapi: [], microtasks: [], macrotasks: ['cb: log(Timeout)'], output: ['1. Start', '2. End', '3. Promise', '3b. qMT'], renderActive: false, activeZone: 'macro', note: 'Render complete. PHASE 3: Event Loop picks ONE macrotask.', angle: 310 },
+  { codeLine: 0, stack: [], webapi: [], microtasks: [], macrotasks: ['cb: log(Timeout)'], output: ['1. Start', '2. End', '3. Promise', '3b. qMT'], renderActive: false, activeZone: 'macro', note: 'Render complete. PHASE 3: Event Loop picks exactly ONE Macrotask.', angle: 320 },
   // 19 macrotask runs
-  { stack: ["cb: log('Timeout')"], webapi: [], microtasks: [], macrotasks: [], output: ['1. Start', '2. End', '3. Promise', '3b. qMT'], renderActive: false, activeZone: 'macro', note: 'Dequeue cb → pushed to stack. setTimeout callback FINALLY runs!', angle: 330 },
+  { codeLine: 2, stack: ["cb: log('Timeout')"], webapi: [], microtasks: [], macrotasks: [], output: ['1. Start', '2. End', '3. Promise', '3b. qMT'], renderActive: false, activeZone: 'stack', note: 'Dequeue cb → pushed to Call Stack. setTimeout callback runs!', angle: 340 },
   // 20 timeout output
-  { stack: [], webapi: [], microtasks: [], macrotasks: [], output: ['1. Start', '2. End', '3. Promise', '3b. qMT', '4. Timeout'], renderActive: false, activeZone: 'idle', note: "'4. Timeout' logged. cb popped. All queues empty.", angle: 350 },
+  { codeLine: 2, stack: [], webapi: [], microtasks: [], macrotasks: [], output: ['1. Start', '2. End', '3. Promise', '3b. qMT', '4. Timeout'], renderActive: false, activeZone: 'idle', note: "✓ '4. Timeout' printed. Stack and queues completely empty.", angle: 360 },
   // 21 summary
-  { stack: [], webapi: [], microtasks: [], macrotasks: [], output: ['1. Start', '2. End', '3. Promise', '3b. qMT', '4. Timeout'], renderActive: false, activeZone: 'idle', note: '✅ Complete cycle! Order: Sync → Microtasks → Render → Macrotask.', angle: 360 },
+  { codeLine: 0, stack: [], webapi: [], microtasks: [], macrotasks: [], output: ['1. Start', '2. End', '3. Promise', '3b. qMT', '4. Timeout'], renderActive: false, activeZone: 'idle', note: '✅ Complete cycle verified: Synchronous → Microtasks → Render → Macrotask.', angle: 360 },
   // 22 quiz
-  { stack: [], webapi: [], microtasks: [], macrotasks: [], output: ['1. Start', '2. End', '3. Promise', '3b. qMT', '4. Timeout'], renderActive: false, activeZone: 'idle', note: '🏆 This order is THE LAW of JS async execution. Everything else follows from it.', angle: 360 },
+  { codeLine: 0, stack: [], webapi: [], microtasks: [], macrotasks: [], output: ['1. Start', '2. End', '3. Promise', '3b. qMT', '4. Timeout'], renderActive: false, activeZone: 'idle', note: '🏆 THE LAW OF JS CONCURRENCY: Microtasks always preempt Macrotasks!', angle: 360 },
 ]
 
 const cur = computed(() => states[Math.min(s.value, states.length - 1)])
 
-const zoneClass = (zone: string) => {
-  const active = cur.value.activeZone === zone
-  const map: Record<string, string> = {
-    stack: 'bg-sky-50 border-sky-500 ring-2 ring-sky-300 shadow-md scale-[1.02]',
-    webapi: 'bg-emerald-50 border-emerald-500 ring-2 ring-emerald-300 shadow-md scale-[1.02]',
-    micro: 'bg-violet-50 border-violet-500 ring-2 ring-violet-300 shadow-md scale-[1.02]',
-    render: 'bg-rose-50 border-rose-500 ring-2 ring-rose-300 shadow-md scale-[1.02]',
-    macro: 'bg-amber-50 border-amber-500 ring-2 ring-amber-300 shadow-md scale-[1.02]',
-    idle: '',
-  }
-  return active ? map[zone] : 'bg-white border-slate-200 opacity-80'
-}
+const codeLines = [
+  { num: 1, text: "console.log('1. Start');" },
+  { num: 2, text: "setTimeout(() => console.log('4. Timeout'), 10);" },
+  { num: 3, text: "Promise.resolve().then(() => console.log('3. Promise'));" },
+  { num: 4, text: "queueMicrotask(() => console.log('3b. qMT'));" },
+  { num: 5, text: "console.log('2. End');" },
+]
 </script>
 
 <template>
-  <div class="h-full flex flex-col gap-1.5 select-none">
-    <div class="flex items-center gap-3 pb-1 border-b-2 border-slate-200">
-      <span class="text-2xl font-black" :class="cur.activeZone !== 'idle' ? 'animate-spin' : ''">↻</span>
+  <div class="h-full flex flex-col justify-between select-none text-slate-800 text-xs">
+    <!-- Header -->
+    <div class="flex items-center gap-2 pb-1 border-b border-slate-200 shrink-0">
+      <span class="text-xl font-black" :class="cur.activeZone !== 'idle' ? 'animate-spin text-amber-600' : ''">↻</span>
       <div>
-        <h2 class="text-xl font-black text-slate-900 leading-tight">Event Loop — Full Lifecycle</h2>
-        <p class="text-xs text-slate-500">Chapter 3 of 5 · Interactive</p>
+        <h2 class="text-base font-black text-slate-900 leading-tight">Event Loop — Full Lifecycle Interactive Simulation</h2>
+        <p class="text-[10px] text-slate-500">Chapter 3 of 5 · Complete End-to-End Execution Trace</p>
       </div>
-      <div class="ml-auto px-2 py-1 rounded-lg bg-sky-600 text-white text-xs font-bold">Step {{ s }}/22</div>
+      <div class="ml-auto flex items-center gap-1.5">
+        <span class="px-2 py-0.5 rounded text-[10px] font-bold border uppercase"
+          :class="{
+            'bg-sky-100 border-sky-300 text-sky-900': cur.activeZone === 'stack',
+            'bg-emerald-100 border-emerald-300 text-emerald-900': cur.activeZone === 'webapi',
+            'bg-violet-100 border-violet-300 text-violet-900': cur.activeZone === 'micro',
+            'bg-rose-100 border-rose-300 text-rose-900': cur.activeZone === 'render',
+            'bg-amber-100 border-amber-300 text-amber-900': cur.activeZone === 'macro',
+            'bg-slate-100 border-slate-300 text-slate-700': cur.activeZone === 'idle' || cur.activeZone === 'code',
+          }"
+        >
+          Zone: {{ cur.activeZone }}
+        </span>
+        <div class="px-2 py-0.5 rounded bg-sky-600 text-white text-[10px] font-bold">Step {{ s }}/22</div>
+      </div>
     </div>
 
-    <!-- Action banner -->
+    <!-- Active Action Banner -->
     <div
-      class="rounded-xl px-3 py-1.5 text-xs font-bold border-2 flex items-center gap-2 transition-all duration-300"
+      class="border rounded-lg px-2.5 py-1 text-[11px] font-medium flex items-center gap-1.5 transition-all duration-300 shrink-0"
       :class="{
         'bg-sky-50 border-sky-400 text-sky-900': cur.activeZone === 'stack',
         'bg-emerald-50 border-emerald-400 text-emerald-900': cur.activeZone === 'webapi',
         'bg-violet-50 border-violet-400 text-violet-900': cur.activeZone === 'micro',
         'bg-rose-50 border-rose-400 text-rose-900': cur.activeZone === 'render',
         'bg-amber-50 border-amber-400 text-amber-900': cur.activeZone === 'macro',
-        'bg-slate-50 border-slate-200 text-slate-700': cur.activeZone === 'idle',
+        'bg-slate-50 border-slate-300 text-slate-700': cur.activeZone === 'idle' || cur.activeZone === 'code',
       }"
     >
-      <span class="animate-pulse">▶</span>
-      {{ cur.note }}
+      <span class="animate-pulse font-bold">▶</span>
+      <span>{{ cur.note }}</span>
     </div>
 
-    <div class="grid grid-cols-12 gap-2 flex-1 min-h-0">
-      <!-- Call Stack (3 cols) -->
-      <div class="col-span-3 border-2 rounded-xl p-2 flex flex-col gap-1 transition-all duration-300" :class="zoneClass('stack')">
-        <div class="text-[10px] font-black text-slate-700 flex items-center justify-between">
-          <span>⚡ Call Stack</span>
-          <span class="bg-sky-100 text-sky-800 px-1 rounded text-[9px]">{{ cur.stack.length }} frames</span>
+    <!-- Main 4-Column Grid -->
+    <div class="grid grid-cols-12 gap-2 flex-1 min-h-0 py-1">
+      <!-- Col 1: Code & Output (3.5 cols) -->
+      <div class="col-span-4 border border-slate-300 rounded-lg p-2 bg-slate-900 text-slate-100 flex flex-col justify-between">
+        <div>
+          <div class="text-[10px] font-black text-slate-400 uppercase tracking-wider mb-1 flex justify-between">
+            <span>📄 Source Code</span>
+            <span class="text-[9px] text-amber-400 font-mono">Sync + Async</span>
+          </div>
+          <div class="font-mono text-[9px] flex flex-col gap-0.5">
+            <div
+              v-for="line in codeLines" :key="line.num"
+              class="px-1.5 py-0.5 rounded flex items-center gap-1.5 transition-all duration-150"
+              :class="{
+                'bg-sky-500/30 text-sky-200 font-bold border-l-2 border-sky-400': cur.codeLine === line.num,
+                'text-slate-400': cur.codeLine !== line.num
+              }"
+            >
+              <span class="text-[8px] text-slate-600 select-none w-3">{{ line.num }}</span>
+              <span class="truncate">{{ line.text }}</span>
+            </div>
+          </div>
         </div>
-        <div class="flex-1 flex flex-col-reverse gap-1">
-          <div v-if="cur.stack.length === 0" class="flex items-center justify-center h-full">
-            <span class="text-[10px] text-slate-400 italic">empty</span>
+
+        <!-- Terminal Output -->
+        <div class="bg-slate-800 p-1.5 rounded border border-slate-700 text-[10px] mt-1">
+          <div class="text-[8px] text-slate-400 uppercase tracking-wider mb-0.5 flex justify-between">
+            <span>Console Output</span>
+            <span class="text-emerald-400 font-mono">{{ cur.output.length }}/4</span>
+          </div>
+          <div v-if="cur.output.length === 0" class="text-slate-500 text-[9px] italic">awaiting output...</div>
+          <div v-for="(o, i) in cur.output" :key="i" class="font-mono text-emerald-400 font-bold text-[9px]">
+            ▶ "{{ o }}"
+          </div>
+        </div>
+      </div>
+
+      <!-- Col 2: Call Stack (2.5 cols) -->
+      <div
+        class="col-span-3 border-2 rounded-lg p-2 bg-slate-50 flex flex-col justify-between transition-all duration-200"
+        :class="cur.activeZone === 'stack' ? 'border-sky-500 bg-sky-50/50 shadow-xs ring-1 ring-sky-300' : 'border-slate-200'"
+      >
+        <div class="flex items-center justify-between text-[10px] font-black text-slate-700 uppercase">
+          <span>⚡ Call Stack</span>
+          <span class="bg-sky-100 text-sky-800 px-1 rounded text-[8px] font-mono">{{ cur.stack.length }} frames</span>
+        </div>
+
+        <div class="flex-1 flex flex-col-reverse gap-1 justify-start py-1 min-h-0">
+          <div v-if="cur.stack.length === 0" class="flex-1 flex items-center justify-center border-2 border-dashed border-slate-300 rounded-lg">
+            <span class="text-[9px] text-slate-400 italic">Stack empty</span>
           </div>
           <div
             v-for="(f, i) in cur.stack" :key="f + i"
-            class="rounded px-1.5 py-0.5 text-[10px] font-bold border flex justify-between"
-            :class="i === cur.stack.length - 1 ? 'bg-sky-600 text-white border-sky-700 animate-pulse' : 'bg-sky-50 border-sky-200 text-sky-900'"
+            class="rounded px-1.5 py-1 text-[9px] font-bold border flex items-center justify-between shadow-xs transition-all duration-200"
+            :class="i === cur.stack.length - 1 ? 'bg-sky-600 text-white border-sky-700 animate-pulse' : 'bg-sky-50 border-sky-300 text-sky-900'"
           >
             <span class="truncate">{{ f }}</span>
-            <span class="text-[8px] ml-1 shrink-0">{{ i === cur.stack.length - 1 ? 'TOP' : '' }}</span>
+            <span v-if="i === cur.stack.length - 1" class="text-[7px] bg-black/20 px-1 rounded ml-1 shrink-0">TOP</span>
           </div>
+        </div>
+
+        <div class="text-[8px] text-slate-500 text-center bg-white border border-slate-200 rounded py-0.2">
+          LIFO Execution
         </div>
       </div>
 
-      <!-- Center: Event Loop wheel + Web APIs (4 cols) -->
-      <div class="col-span-4 flex flex-col gap-2">
+      <!-- Col 3: Host Web APIs & Event Loop Hub (2 cols) -->
+      <div class="col-span-2 flex flex-col gap-1.5">
         <!-- Web APIs -->
-        <div class="border-2 rounded-xl p-2 flex-1 flex flex-col gap-1 transition-all duration-300" :class="zoneClass('webapi')">
-          <div class="text-[10px] font-black text-slate-700">🌐 Web APIs / libuv (OS Threads)</div>
-          <div class="flex-1">
-            <div v-if="cur.webapi.length === 0" class="text-[10px] text-slate-400 italic">threads idle</div>
+        <div
+          class="border-2 rounded-lg p-1.5 flex-1 flex flex-col justify-between transition-all duration-200"
+          :class="cur.activeZone === 'webapi' ? 'border-emerald-500 bg-emerald-50 ring-1 ring-emerald-300 shadow-xs' : 'border-slate-200 bg-white'"
+        >
+          <div class="text-[9px] font-black text-slate-700 uppercase">🌐 Web APIs (Host)</div>
+          <div class="flex-1 flex flex-col justify-center">
+            <div v-if="cur.webapi.length === 0" class="text-[8px] text-slate-400 italic text-center">Idle</div>
             <div
               v-for="w in cur.webapi" :key="w"
-              class="text-[10px] font-bold rounded px-1.5 py-0.5 bg-emerald-100 border border-emerald-400 text-emerald-900 mb-0.5"
-            >{{ w }}</div>
+              class="text-[8px] font-bold font-mono rounded p-1 bg-emerald-100 border border-emerald-400 text-emerald-950 text-center animate-pulse"
+            >
+              {{ w }}
+            </div>
           </div>
         </div>
 
-        <!-- Event Loop Hub -->
-        <div class="flex items-center justify-center py-1">
+        <!-- Event Loop Wheel -->
+        <div class="border border-slate-200 rounded-lg p-1 bg-slate-50 flex flex-col items-center justify-center shrink-0">
           <div
-            class="w-16 h-16 rounded-full border-4 flex flex-col items-center justify-center transition-all duration-300 shadow-lg"
-            :class="cur.activeZone !== 'idle' ? 'border-amber-500 bg-amber-100 ring-4 ring-amber-300' : 'border-slate-300 bg-slate-100'"
+            class="w-10 h-10 rounded-full border-2 flex items-center justify-center shadow-xs transition-all duration-300"
+            :class="cur.activeZone !== 'idle' ? 'border-amber-500 bg-amber-100 ring-2 ring-amber-300' : 'border-slate-300 bg-white'"
           >
-            <div
-              class="text-xl font-black text-amber-600 transition-all duration-500"
+            <span
+              class="text-base font-black text-amber-700 transition-transform duration-300"
               :style="{ transform: `rotate(${cur.angle}deg)` }"
-            >↻</div>
-            <div class="text-[8px] font-black text-slate-800">EVENT<br/>LOOP</div>
+            >↻</span>
           </div>
+          <div class="text-[8px] font-black text-slate-700 mt-0.5">EVENT LOOP</div>
         </div>
       </div>
 
-      <!-- Right: Queues + Output (5 cols) -->
-      <div class="col-span-5 flex flex-col gap-1.5">
-        <!-- Microtask Queue -->
-        <div class="border-2 rounded-xl p-2 flex-1 flex flex-col gap-1 transition-all duration-300" :class="zoneClass('micro')">
-          <div class="text-[10px] font-black text-slate-700 flex items-center justify-between">
-            <span>⭐ Microtasks (VIP)</span>
-            <span class="bg-violet-100 text-violet-800 px-1 rounded text-[9px]">100% drain first</span>
+      <!-- Col 4: Queues & Pipeline (3 cols) -->
+      <div class="col-span-3 flex flex-col gap-1">
+        <!-- Microtask VIP Queue -->
+        <div
+          class="border-2 rounded-lg p-1.5 flex-1 flex flex-col transition-all duration-200"
+          :class="cur.activeZone === 'micro' ? 'border-violet-500 bg-violet-50 ring-1 ring-violet-300 shadow-xs' : 'border-slate-200 bg-white'"
+        >
+          <div class="flex items-center justify-between text-[9px] font-black text-violet-900 uppercase">
+            <span>👑 Microtasks (VIP)</span>
+            <span class="bg-violet-600 text-white px-1 rounded text-[7px]">Drain 100%</span>
           </div>
-          <div class="flex-1">
-            <div v-if="cur.microtasks.length === 0" class="text-[10px] text-slate-400 italic">queue drained ✓</div>
+          <div class="flex-1 flex flex-col gap-0.5 justify-start mt-0.5">
+            <div v-if="cur.microtasks.length === 0" class="text-[8px] text-slate-400 italic">Drained ✓</div>
             <div
               v-for="m in cur.microtasks" :key="m"
-              class="text-[10px] font-bold rounded px-1.5 py-0.5 bg-violet-600 text-white mb-0.5 animate-pulse"
-            >👑 {{ m }}</div>
+              class="text-[8px] font-bold rounded px-1.5 py-0.5 bg-violet-600 text-white truncate shadow-xs animate-pulse"
+            >
+              ⭐ {{ m }}
+            </div>
           </div>
         </div>
 
-        <!-- Render -->
-        <div class="border-2 rounded-xl p-2 transition-all duration-300" :class="zoneClass('render')">
-          <div class="text-[10px] font-black text-slate-700 flex items-center justify-between">
-            <span>🎨 Render (16.6ms)</span>
-            <span :class="cur.renderActive ? 'text-rose-600 font-black animate-pulse' : 'text-slate-400'">{{ cur.renderActive ? 'ACTIVE' : 'idle' }}</span>
+        <!-- Render Pipeline -->
+        <div
+          class="border-2 rounded-lg p-1 transition-all duration-200 shrink-0"
+          :class="cur.renderActive ? 'border-rose-500 bg-rose-50 ring-1 ring-rose-300 shadow-xs' : 'border-slate-200 bg-white'"
+        >
+          <div class="flex items-center justify-between text-[8px] font-black text-slate-700">
+            <span>🎨 Render (60 FPS)</span>
+            <span :class="cur.renderActive ? 'text-rose-600 font-bold animate-pulse' : 'text-slate-400'">
+              {{ cur.renderActive ? 'V-SYNC ACTIVE' : 'Idle' }}
+            </span>
           </div>
-          <div class="text-[9px] text-slate-500 mt-0.5">rAF → Style → Layout → Paint → Composite</div>
+          <div class="text-[7px] text-slate-500">rAF → Style → Layout → Paint</div>
         </div>
 
         <!-- Macrotask Queue -->
-        <div class="border-2 rounded-xl p-2 flex-1 flex flex-col gap-1 transition-all duration-300" :class="zoneClass('macro')">
-          <div class="text-[10px] font-black text-slate-700 flex items-center justify-between">
-            <span>⏳ Macrotasks</span>
-            <span class="bg-amber-100 text-amber-800 px-1 rounded text-[9px]">1 per turn</span>
+        <div
+          class="border-2 rounded-lg p-1.5 flex-1 flex flex-col transition-all duration-200"
+          :class="cur.activeZone === 'macro' ? 'border-amber-500 bg-amber-50 ring-1 ring-amber-300 shadow-xs' : 'border-slate-200 bg-white'"
+        >
+          <div class="flex items-center justify-between text-[9px] font-black text-amber-900 uppercase">
+            <span>⏱️ Macrotasks</span>
+            <span class="bg-amber-600 text-white px-1 rounded text-[7px]">1 Per Turn</span>
           </div>
-          <div class="flex-1">
-            <div v-if="cur.macrotasks.length === 0" class="text-[10px] text-slate-400 italic">queue empty</div>
+          <div class="flex-1 flex flex-col gap-0.5 justify-start mt-0.5">
+            <div v-if="cur.macrotasks.length === 0" class="text-[8px] text-slate-400 italic">Empty</div>
             <div
               v-for="t in cur.macrotasks" :key="t"
-              class="text-[10px] font-bold rounded px-1.5 py-0.5 bg-amber-500 text-amber-950 mb-0.5"
-            >⏱ {{ t }}</div>
+              class="text-[8px] font-bold rounded px-1.5 py-0.5 bg-amber-400 text-amber-950 truncate border border-amber-500 shadow-xs"
+            >
+              ⏱ {{ t }}
+            </div>
           </div>
-        </div>
-
-        <!-- Console Output -->
-        <div class="border-2 border-slate-300 rounded-xl p-2 bg-slate-900">
-          <div class="text-[10px] font-black text-slate-400 mb-1">📟 Console</div>
-          <div v-if="cur.output.length === 0" class="text-[10px] text-slate-600 italic">awaiting...</div>
-          <div
-            v-for="(o, i) in cur.output" :key="i"
-            class="font-mono text-emerald-400 font-bold text-[10px]"
-          >▶ "{{ o }}"</div>
         </div>
       </div>
     </div>
