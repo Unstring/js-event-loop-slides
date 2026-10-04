@@ -24,13 +24,13 @@ const outputs = ['A', 'D', 'C', 'B']
     <!-- Header -->
     <div class="text-center pt-2">
       <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-sky-600 text-white text-xs font-bold tracking-widest uppercase mb-3">
-        JavaScript Visual Masterclass
+        Teaching Demo Round · Core JavaScript
       </div>
       <h1 class="text-4xl font-black text-slate-900 leading-tight tracking-tight">
         The JavaScript<br/>
         <span class="text-sky-600">Event Loop</span>
       </h1>
-      <p class="text-slate-500 text-sm mt-1">& Asynchronous Programming</p>
+      <p class="text-slate-500 text-sm mt-1">Asynchronous Concurrency & Runtime Architecture</p>
     </div>
 
     <!-- Topics Grid -->

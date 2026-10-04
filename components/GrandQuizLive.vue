@@ -96,7 +96,7 @@ const questions: QuizItem[] = [
       <span class="text-2xl">🏆</span>
       <div>
         <h2 class="text-xl font-black text-slate-900 leading-tight">Mastery Knowledge Check</h2>
-        <p class="text-xs text-slate-500">Grand Finale · The Ultimate Conceptual Benchmark</p>
+        <p class="text-xs text-slate-500">Teaching Demo Round · Core Conceptual Benchmark</p>
       </div>
       <div class="ml-auto flex items-center gap-2">
         <span class="px-2 py-0.5 rounded bg-emerald-100 border border-emerald-300 text-emerald-900 font-bold text-xs">
