@@ -1,29 +1,47 @@
 ---
 theme: default
 colorSchema: light
-title: JavaScript Event Loop & Asynchronous Architecture
-info: 20-slide visual masterclass with 20-25 interactions per slide on JavaScript Single-Threaded Architecture, Call Stack, Event Loop, Web APIs, Microtasks, Macrotasks, and Promises.
+title: JavaScript Event Loop & Async Programming
+info: |
+  A visual masterclass on the JavaScript runtime model.
+  Covers single-threaded model, call stack, event loop,
+  setTimeout internals, microtasks, macrotasks, Promises & async/await.
 drawings:
   persist: false
-transition: fade
+transition: slide-left
 mdc: true
-monaco: true
+monaco: false
 lineNumbers: true
-src: ./slides/01-single-threaded.md
+fonts:
+  sans: Plus Jakarta Sans
+  mono: JetBrains Mono
+src: ./slides/01-title.md
 ---
 
 ---
-src: ./slides/02-callstack-eventloop.md
+src: ./slides/02-single-threaded.md
 ---
 
 ---
-src: ./slides/03-settimeout-internals.md
+src: ./slides/03-callstack.md
 ---
 
 ---
-src: ./slides/04-microtasks-macrotasks.md
+src: ./slides/04-event-loop.md
 ---
 
 ---
-src: ./slides/05-promises-async-await.md
+src: ./slides/05-settimeout.md
+---
+
+---
+src: ./slides/06-queues.md
+---
+
+---
+src: ./slides/07-promises.md
+---
+
+---
+src: ./slides/08-recap.md
 ---
