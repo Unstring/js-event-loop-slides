@@ -50,7 +50,7 @@ const codeComparisonNote = computed(() => {
 
     <!-- 2 Columns -->
     <div class="grid grid-cols-2 gap-2 flex-1 min-h-0 py-1">
-      <!-- LEFT: Promise Anatomy (Steps 1-12) -->
+      <!-- LEFT: Promise Anatomy (Steps 1-12) + Animated Coroutine Engine (Steps 17-22) -->
       <div class="flex flex-col gap-1.5 justify-between min-h-0">
         <div>
           <div class="text-[10px] font-black text-slate-700 uppercase tracking-wider mb-1 flex justify-between">
@@ -86,7 +86,7 @@ const codeComparisonNote = computed(() => {
         </div>
 
         <!-- Reaction Records (Steps 7-12) -->
-        <div class="flex flex-col gap-0.5">
+        <div class="flex flex-col gap-0.5" v-if="s < 17">
           <div
             v-for="m in mechanics" :key="m.id"
             class="border rounded px-1.5 py-0.5 text-[8px] bg-white border-slate-200 flex items-center justify-between transition-all duration-200"
@@ -94,6 +94,81 @@ const codeComparisonNote = computed(() => {
           >
             <span class="font-bold text-slate-800">{{ m.title }}:</span>
             <span class="text-slate-600 truncate ml-1">{{ m.text }}</span>
+          </div>
+        </div>
+
+        <!-- Live Coroutine Pipeline Animation (Steps 17-22 in the lower area) -->
+        <div
+          v-else
+          class="border-2 border-violet-300 rounded-lg p-1.5 bg-violet-50/70 transition-all duration-400 flex flex-col justify-between shrink-0"
+        >
+          <div class="flex items-center justify-between text-[9px] font-black text-violet-900 mb-1">
+            <span class="flex items-center gap-1">
+              <span class="animate-spin text-xs">⚙️</span>
+              <span>V8 Coroutine State Machine (Live Animation)</span>
+            </span>
+            <span class="bg-violet-200 text-violet-900 px-1 rounded font-mono text-[8px] font-bold">Steps 17-22</span>
+          </div>
+
+          <!-- 3-Station Animation Grid -->
+          <div class="grid grid-cols-3 gap-1 text-[8px] font-mono">
+            <!-- Station 1: Call Stack -->
+            <div class="border rounded p-1 flex flex-col justify-between transition-all duration-300"
+              :class="{
+                'bg-amber-100 border-amber-400 text-amber-950 font-bold scale-[1.02] shadow-xs': s === 18,
+                'bg-emerald-100 border-emerald-400 text-emerald-950 font-bold scale-[1.02] shadow-xs': s === 21,
+                'bg-white border-slate-200 text-slate-600': s !== 18 && s !== 21,
+              }"
+            >
+              <div class="font-sans font-bold text-[7.5px] uppercase text-slate-500">1. Call Stack</div>
+              <div class="py-0.5 truncate text-[8.5px]">
+                <span v-if="s === 17">Empty</span>
+                <span v-else-if="s === 18" class="text-amber-900">⚡ fn() &gt; req()</span>
+                <span v-else-if="s === 19" class="text-slate-400 italic">POPPED (Free)</span>
+                <span v-else-if="s === 20" class="text-sky-700">✓ Caller runs</span>
+                <span v-else-if="s === 21" class="text-emerald-800">⚡ fn() RESUMED</span>
+                <span v-else class="text-green-800">Popped ✓</span>
+              </div>
+              <div class="text-[7px] text-slate-400 font-sans">
+                {{ s === 19 ? 'Yielded Thread' : (s === 21 ? 'Restored Frame' : 'Stack Node') }}
+              </div>
+            </div>
+
+            <!-- Station 2: Heap Storage -->
+            <div class="border rounded p-1 flex flex-col justify-between transition-all duration-300"
+              :class="{
+                'bg-purple-100 border-purple-400 text-purple-950 font-bold scale-[1.02] shadow-xs ring-1 ring-purple-300': s === 19 || s === 20,
+                'bg-white border-slate-200 text-slate-600': s < 19 || s >= 21,
+              }"
+            >
+              <div class="font-sans font-bold text-[7.5px] uppercase text-slate-500">2. Heap Memory</div>
+              <div class="py-0.5 truncate text-[8.5px]">
+                <span v-if="s < 19">Empty</span>
+                <span v-else-if="s === 19 || s === 20" class="text-purple-900 animate-pulse">📦 [[SavedCtx]]</span>
+                <span v-else class="text-slate-400">Reclaimed ✓</span>
+              </div>
+              <div class="text-[7px] text-slate-400 font-sans">
+                {{ s === 19 || s === 20 ? 'Coroutine Suspended' : 'GC Cleaned' }}
+              </div>
+            </div>
+
+            <!-- Station 3: VIP Microtask Queue -->
+            <div class="border rounded p-1 flex flex-col justify-between transition-all duration-300"
+              :class="{
+                'bg-violet-600 text-white font-bold scale-[1.02] shadow-xs animate-pulse': s === 21,
+                'bg-white border-slate-200 text-slate-600': s !== 21,
+              }"
+            >
+              <div class="font-sans font-bold text-[7.5px] uppercase" :class="s === 21 ? 'text-violet-200' : 'text-slate-500'">3. Microtasks</div>
+              <div class="py-0.5 truncate text-[8.5px]">
+                <span v-if="s < 21">Waiting</span>
+                <span v-else-if="s === 21" class="text-white">👑 Resume Task!</span>
+                <span v-else class="text-emerald-700">Drained ✓</span>
+              </div>
+              <div class="text-[7px] font-sans" :class="s === 21 ? 'text-violet-100' : 'text-slate-400'">
+                {{ s === 21 ? 'VIP Priority Push' : 'Queue Empty' }}
+              </div>
+            </div>
           </div>
         </div>
       </div>
